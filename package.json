@@ -1,0 +1,27 @@
+{
+  "name": "@redant/node-red-contrib-sql",
+  "version": "0.1.0",
+  "description": "A Node-RED node run Sql queries",
+  "dependencies": {
+    "knex": "0.9.0",
+    "mysql": "^2.10.2",
+    "pg": "^3.5.0",
+    "sqlite3": "^3.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/redconnect-io/node-red-contrib-sql/"
+  },
+  "license": "Apache",
+  "keywords": [
+    "node-red",
+    "sql",
+    "storage"
+  ],
+  "node-red": {
+    "nodes": {
+      "Sql": "sql.js"
+    }
+  },
+  "author": "Maurizio Carboni <mcarboni@redant.com>"
+}

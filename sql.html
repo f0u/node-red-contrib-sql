@@ -1,0 +1,452 @@
+<!--
+  Copyright 2015 mcarboni@redant.com
+
+  Licensed under the Apache License, Version 2.0 (the 'License');
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an 'AS IS' BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+
+<script type='text/x-red' data-template-name='sqldb'>
+    <div class='form-row'>
+       <label for='node-input-name'><i class='fa fa-tag'></i> Name</label>
+       <input type='text' id='node-input-name' placeholder='Name'>
+    </div>
+    <div class='form-row'>
+        <label for='node-config-input-dialect'><i class='fa fa-bookmark'></i> Dialect</label>
+        <select id='node-config-input-dialect'>
+            <option value='pg'>PostgreSql</option>
+            <option value='mysql'>MySql</option>
+            <option value='sqlite3'>Sqlite3</option>
+        </select>
+    </div>
+    <div class='form-row sqlite3'>
+        <label for='node-config-input-filename'><i class='fa fa-briefcase'></i> Filename</label>
+        <input type='text' id='node-config-input-filename' placeholder='Database Name'>
+    </div>
+    <div class='form-row pg mysql'>
+        <label for='node-config-input-hostname'><i class='fa fa-bookmark'></i> Host</label>
+        <input class='input-append-left' type='text' id='node-config-input-hostname' placeholder='localhost' style='width: 40%;' >
+        <label for='node-config-input-port' style='margin-left: 10px; width: 35px;' class='pg'> Port</label>
+        <input type='text' id='node-config-input-port' placeholder='5432' style='width:45px' class='pg'>
+    </div>
+    <div class='form-row pg mysql'>
+        <label for='node-config-input-db'><i class='fa fa-briefcase'></i> Database</label>
+        <input type='text' id='node-config-input-db' placeholder='Database Name'>
+    </div>
+    <div class='form-row pg mysql'>
+        <label for='node-config-input-user'><i class='fa fa-user'></i> Username</label>
+        <input type='text' id='node-config-input-user' placeholder='Username'>
+        <label for='node-config-input-password'><i class='fa fa-lock'></i> Password</label>
+        <input type='password' id='node-config-input-password' placeholder=''>
+    </div>
+    <div class='form-row pg'>
+        <label>&nbsp;</label>
+        <input type='checkbox' id='node-config-input-ssl' style='display: inline-block; width: auto; vertical-align: top;'>
+        <label for='node-config-input-ssl' style='width: 70%;'>Use SSL</label>
+    </div>
+</script>
+
+<script type='text/javascript'>
+    (function() {
+            RED.nodes.registerType('sqldb',{
+            category: 'config',
+            color:'rgb(218, 196, 180)',
+            defaults: {
+                name: { value:'' },
+                dialect: { value:'pg' },
+                hostname: { value:'localhost',required:true},
+                port: { value: 5432,required:true},
+                db: { value:'sql',required:true},
+                ssl: { value:false }
+            },
+            credentials: {
+                user: {type: 'text'},
+                password: {type: 'password'}
+            },
+            label: function() {
+                return this.name||this.hostname+':'+this.port+'/'+this.db;
+            },
+            oneditprepare: function() {
+                //When the dialect selector change
+                $('#node-config-input-dialect').change(function (ev) {
+                    //Find the dialects not selected
+                    var dialects = 'pg mysql sqlite3'.split(' ');
+                    dialects.splice(dialects.indexOf($(this).val()),1);
+                    //Hide them
+                    console.log('Hiding ','.'+dialects.join(',.'));
+                    $('.'+dialects.join(',.')).hide();
+                    //Show the fields for the selected dialect
+                    $('.'+$(this).val()).show();
+                });
+            }
+        });
+    })();
+</script>
+
+<script type='text/x-red' data-template-name='sqlarray'>
+    <div class='form-row'>
+        <label style='vertical-align: top;'><i class='fa fa-tag'></i> Accepted Columns</label>
+        <div style='width:calc( 70% + 2em);display:inline-block'>
+            <div id='sql-array-columns' style='padding-bottom: 1em;'>
+                <h4 class='muted' id='sql-array-columns-any'>Any</h4>
+            </div>
+            <div>
+                <input type='text' id='sql-array-add-column-text' placeholder='Column Name' style='width:calc( 100% - 5em)'/>
+                <a class='editor-button fa fa-plus' id='sql-array-add-column'></a>
+            </div>
+        </div>
+    </div>
+    <input type='hidden' id='node-config-input-columns' value='[]' />
+</script>
+
+<script type='text/javascript'>
+    (function() {
+        function _removeColumn(columnName,cols,columnElement) {
+            return function () {
+                $(columnElement).remove();
+                var columnIndex = cols.indexOf(columnName);
+                if (columnIndex !== -1) {
+                    cols.splice(columnIndex,1);
+                }
+                if (cols.length === 0) {
+                    $('#sql-array-columns-any').show();
+                }
+                $('#node-config-input-columns').val(JSON.stringify(cols));
+            }
+        }
+        function _addColumnElement(columnName,cols) {
+            var columnElement =
+                    $('<div class="label label-info" style="margin : .1em .3em;" />')
+                        .append($('<span style="margin: 0.2em; font-size: 1.3em;line-height: 1.3em;" />').text(columnName));
+            columnElement.append($('<a class="btn btn-danger fa fa-times" style="padding:.2em .3em;margin: -.3em .1em .2em .1em; color: #FFF"/>')
+                .click(_removeColumn(columnName,cols,columnElement)));
+            $('#sql-array-columns').append(columnElement);
+        }
+		RED.nodes.registerType('sqlarray',{
+			category: 'config',
+			color:'rgb(148, 226, 252)',
+			defaults: {
+				columns: { value: '[]'  }
+			},
+            columns: '[]',
+			label: function() {
+                var cols = JSON.parse(this.columns);
+				return cols.length ? cols.join() : '*';
+			},
+			oneditprepare: function() {
+                var node=this;
+                node._columns = JSON.parse(this.columns);
+                if (node._columns.length > 0) {
+                    $('#sql-array-columns-any').hide();
+                    for (var i=0,l=node._columns.length;i<l;i++) {
+                        _addColumnElement(node._columns[i],node._columns);
+                    }
+                }
+                function addColumn() {
+                    var columnName = $('#sql-array-add-column-text').val().toLowerCase().trim();
+                    if (node._columns.length === 0) {
+                        $('#sql-array-columns-any').hide();
+                    }
+                    //Check if already exists
+                    if ((columnName.length > 0) && (node._columns.indexOf(columnName) === -1)) {
+                        $('#sql-array-add-column-text').val('');
+                        _addColumnElement(columnName,node._columns);
+                        node._columns.push(columnName);
+                        $('#node-config-input-columns').val(JSON.stringify(node._columns));
+                    }
+                }
+                $('#sql-array-add-column').click(addColumn);
+                $('#sql-array-add-column-text').on('keydown',function (ev) {
+                    //On backspace
+                    if ((ev.keyCode === 8)&&(this.value === '')) {
+                        //Delete the last one inserted
+                        if (node._columns.length > 0) {
+                            node._columns.pop();
+                            $('#sql-array-columns').children().last().remove();
+                            if (cols.length === 0) {
+                                $('#sql-array-columns-any').show();
+                            }
+                        }
+                    }
+                    //On Enter
+                    if (ev.keyCode === 13) {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        addColumn();
+                    }
+                });
+                $('#node-config-input-columns').val(JSON.stringify(node._columns));
+            }
+		});
+    })();
+</script>
+
+<script type='text/x-red' data-template-name='SQL Insert'>
+    <div class='form-row'>
+       <label for='node-input-name'><i class='fa fa-tag'></i> Name</label>
+       <input type='text' id='node-input-name' placeholder='Name'>
+    </div>
+    <div class='form-row'>
+       <label for='node-input-table'><i class='fa fa-tag'></i> Table name</label>
+       <input type='text' id='node-input-table' placeholder='Table name'>
+    </div>
+	<div class='form-row'>
+        <label for='node-input-name' style='vertical-align: top;'><i class='fa fa-tag'></i> Accepted Columns</label>
+        <input type='text' id='node-input-columns'>
+    </div>
+    <div class='form-row'>
+        <label>&nbsp;</label>
+        <input type='checkbox' id='node-input-require-all' placeholder='once' style='display: inline-block; width: auto; vertical-align: top;'>
+        <label for='node-input-require-all' style='width: 70%;'>All columns required ?</label>
+    </div>
+    <div class='form-row'>
+        <label for='node-input-sqldb'><i class='fa fa-tag'></i> Server</label>
+        <input type='text' id='node-input-sqldb'>
+    </div>
+</script>
+
+<script type='text/x-red' data-help-name='SQL Insert'>
+    <p>A Sql Insert node. </p>
+
+    <p>The ​<em>msg.payload</em>​ is the data that will be inserted, this data is filtered using the ​<em>Accepted columns</em>​ param, in the case the param is empty - are used all the columns available on ​<em>msg.payload</em>​. <br>
+    Enabling the ​<em>All columns required ?</em>​ parameter, if in the ​<em>msg.payload</em>​ aren’t available all the columns accepted by the node, the query is rejected (This param is ignored in the case the param ​<em>Accepted columns</em>​ is empty).</p>
+
+</script>
+
+<script type='text/javascript'>
+    (function() {
+		RED.nodes.registerType('SQL Insert',{
+			category: 'storage-output',
+			color:'rgb(148, 226, 252)',
+			defaults: {
+                sqldb: { type:'sqldb',required:true},
+                name: { value:'' },
+                table: { value:'', required : true },
+				columns: { type:'sqlarray'  },
+                requireAll: { value: false }
+			},
+			inputs: 1,
+			outputs: 1,
+			icon: 'sql.png',
+			label: function() {
+				return this.name||('insert on '+this.table);
+			},
+			labelStyle: function() {
+				return this.name?'node_label_italic':'';
+			},
+			oneditprepare: function() {
+                $('#node-input-require-all').prop('checked', this.requireAll);
+				$('#node-input-name').focus();
+            },
+			oneditsave: function() {
+				this.requireAll = $( '#node-input-require-all' ).prop( 'checked' ) + 0;
+			}
+		});
+    })();
+</script>
+
+<script type='text/x-red' data-template-name='SQL Update'>
+    <div class='form-row'>
+       <label for='node-input-name'><i class='fa fa-tag'></i> Name</label>
+       <input type='text' id='node-input-name' placeholder='Name'>
+    </div>
+    <div class='form-row'>
+       <label for='node-input-table'><i class='fa fa-tag'></i> Table name</label>
+       <input type='text' id='node-input-table' placeholder='Table name'>
+    </div>
+	<div class='form-row'>
+        <label for='node-input-columns' style='vertical-align: top;'><i class='fa fa-tag'></i> Accepted Columns</label>
+        <input type='text' id='node-input-columns'>
+    </div>
+    <div class='form-row'>
+        <label>&nbsp;</label>
+        <input type='checkbox' id='node-input-require-all' placeholder='once' style='display: inline-block; width: auto; vertical-align: top;'>
+        <label for='node-input-require-all' style='width: 70%;'>All columns required ?</label>
+    </div>
+    <div class='form-row'>
+        <label for='node-input-where' style='vertical-align: top;'><i class='fa fa-tag'></i> Where Columns</label>
+        <input type='text' id='node-input-where'>
+    </div>
+    <div class='form-row'>
+        <label>&nbsp;</label>
+        <input type='checkbox' id='node-input-require-all' placeholder='once' style='display: inline-block; width: auto; vertical-align: top;'>
+        <label for='node-input-require-all-where' style='width: 70%;'>All columns required ?</label>
+    </div>
+    <div class='form-row'>
+        <label for='node-input-sqldb'><i class='fa fa-tag'></i> Server</label>
+        <input type='text' id='node-input-sqldb'>
+    </div>
+</script>
+
+<script type='text/x-red' data-help-name='SQL Update'>
+    <p>A SQL Update node. </p>
+
+    <p>The ​<em>msg.payload</em>​ is the data that will be updated, this data is filtered using the ​<em>Accepted columns</em>​ param, in the case the param is empty - are used all the columns available on ​<em>msg.payload</em>​. <br>
+    Enabling the ​<em>All columns required ?</em>​ parameter, if in the ​<em>msg.payload</em>​ aren’t available all the columns accepted by the node, the query is rejected (This param is ignored in the case the param ​<em>Accepted columns</em>​ is empty).</p>
+    <p>The values for the where needs to be specified on the ​<em>msg.where</em>​</p>
+
+    <h3 id="example-input">Example Input</h3>
+
+    <pre class="prettyprint"><code class="language-json hljs ">{
+       "<span class="hljs-attribute">payload</span>" : <span class="hljs-value">{
+           "<span class="hljs-attribute">foo</span>" : <span class="hljs-value"><span class="hljs-number">1</span></span>,
+           "<span class="hljs-attribute">bar</span>" : <span class="hljs-value"><span class="hljs-string">"xD"</span></span>,
+           "<span class="hljs-attribute">test</span>": <span class="hljs-value"><span class="hljs-number">2</span>
+       </span>}</span>,
+       "<span class="hljs-attribute">where</span>" : <span class="hljs-value">{
+           "<span class="hljs-attribute">foo</span>" : <span class="hljs-value"><span class="hljs-number">4</span>
+       </span>}
+    </span>}</code></pre>
+
+</script>
+
+<script type='text/javascript'>
+    (function() {
+		RED.nodes.registerType('SQL Update',{
+			category: 'storage-output',
+			color:'rgb(148, 226, 252)',
+			defaults: {
+                sqldb: { type:'sqldb',required:true},
+                name: { value:'' },
+                table: { value:'', required : true },
+				columns: { type:'sqlarray'  },
+				where: { type:'sqlarray'  },
+                requireAll: { value: false },
+                requireAllWhere: { value: false }
+			},
+			inputs: 1,
+			outputs: 1,
+			icon: 'sql.png',
+			label: function() {
+				return this.name||('update on '+this.table);
+			},
+			labelStyle: function() {
+				return this.name?'node_label_italic':'';
+			},
+			oneditprepare: function() {
+                $('#node-input-require-all').prop('checked', this.requireAll);
+                $('#node-input-require-all-where').prop('checked', this.requireAllWhere);
+				$('#node-input-name').focus();
+            },
+			oneditsave: function() {
+				this.requireAll = $( '#node-input-require-all' ).prop( 'checked' ) + 0;
+				this.requireAllWhere = $( '#node-input-require-all-where' ).prop( 'checked' ) + 0;
+			}
+		});
+    })();
+</script>
+
+<script type='text/x-red' data-template-name='SQL Select'>
+    <div class='form-row'>
+       <label for='node-input-name'><i class='fa fa-tag'></i> Name</label>
+       <input type='text' id='node-input-name' placeholder='Name'>
+    </div>
+    <div class='form-row'>
+       <label for='node-input-table'><i class='fa fa-tag'></i> Table name</label>
+       <input type='text' id='node-input-table' placeholder='Table name'>
+    </div>
+	<div class='form-row'>
+        <label for='node-input-columns' style='vertical-align: top;'><i class='fa fa-tag'></i> Columns</label>
+        <input type='text' id='node-input-columns'>
+    </div>
+    <div class='form-row'>
+        <label for='node-input-where' style='vertical-align: top;'><i class='fa fa-tag'></i> Where Columns</label>
+        <input type='text' id='node-input-where'>
+    </div>
+    <div class='form-row'>
+        <label>&nbsp;</label>
+        <input type='checkbox' id='node-input-require-all' placeholder='once' style='display: inline-block; width: auto; vertical-align: top;'>
+        <label for='node-input-require-all' style='width: 70%;'>All columns required ?</label>
+        <label>&nbsp;</label>
+        <input type='checkbox' id='node-input-no-where' placeholder='once' style='display: inline-block; width: auto; vertical-align: top;'>
+        <label for='node-input-no-where' style='width: 70%;'>Ignore the where clause ?</label>
+    </div>
+    <div class='form-row'>
+        <label for='node-input-group' style='vertical-align: top;'><i class='fa fa-tag'></i> Group by</label>
+        <input type='text' id='node-input-group'>
+    </div>
+    <div class='form-row'>
+        <label for='node-input-order' style='vertical-align: top;'><i class='fa fa-tag'></i> Order by</label>
+        <input class='input-append-left' type='text' id='node-input-order' style='width: 40%;'>
+        <select id='node-input-orderdir'>
+            <option value='ASC'>ASC</option>
+            <option value='DESC'>DESC</option>
+        </select>
+    </div>
+    <div class='form-row'>
+       <label for='node-input-limit'><i class='fa fa-tag'></i> Limit</label>
+       <input type='text' id='node-input-limit' placeholder='Limit'>
+    </div>
+    <div class='form-row'>
+       <label for='node-input-offset'><i class='fa fa-tag'></i> Offset</label>
+       <input type='text' id='node-input-offset' placeholder='Offset'>
+    </div>
+    <div class='form-row'>
+        <label for='node-input-sqldb'><i class='fa fa-tag'></i> Server</label>
+        <input type='text' id='node-input-sqldb'>
+    </div>
+</script>
+
+<script type='text/x-red' data-help-name='SQL Select'>
+    <p>A SQL Select node. </p>
+
+    <p>The values for the where needs to be specified on the ​<em>msg.payload</em>​, in the case the ​<em>Ignore the where clause ?</em>​ parameter is enabled, the ​<em>msg.payload</em>​ and every time the node is triggered the input isn’t checked.</p>
+
+    <p>The ​<em>columns</em>​ parameter are the columns that you want to select from the table, in the case a ​<em>msg.group</em>​ is passed to the node, the ​<em>Group by</em>​ parameter is overwritten, same thing for ​<em>msg.order</em>​</p>
+
+    <p>For each of the ​<em>limit</em>​, ​<em>offset</em>​ parameters, in the case the value set is different from 0, the ​<em>msg.limit</em>​ / ​<em>msg.offset</em>​ is ignored</p>
+
+
+</script>
+
+<script type='text/javascript'>
+    (function() {
+        console.log('Registering SQL Select');
+		RED.nodes.registerType('SQL Select',{
+			category: 'storage-output',
+			color:'rgb(148, 226, 252)',
+			defaults: {
+                sqldb: { type:'sqldb',required:true},
+                name: { value:'' },
+                table: { value:'', required : true },
+                limit: { value:'0', validate:RED.validators.number() },
+                offset: { value:'0', validate:RED.validators.number() },
+				columns: { type:'sqlarray'  },
+				where: { type:'sqlarray'  },
+				group: { type:'sqlarray'  },
+				order: { type:'sqlarray'  },
+				orderdir: { value:'ASC'  },
+                requireAll: { value: false },
+                noWhere: { value: false }
+			},
+			inputs: 1,
+			outputs: 1,
+			icon: 'sql.png',
+			label: function() {
+				return this.name||('select on '+this.table);
+			},
+			labelStyle: function() {
+				return this.name
+                        ? 'node_label_italic'
+                        : '';
+			},
+			oneditprepare: function() {
+                $('#node-input-require-all').prop('checked', this.requireAll);
+                $('#node-input-no-where').prop('checked', this.noWhere);
+				$('#node-input-name').focus();
+            },
+			oneditsave: function() {
+				this.requireAll = $( '#node-input-require-all' ).prop( 'checked' ) + 0;
+				this.noWhere = $( '#node-input-no-where' ).prop( 'checked' ) + 0;
+			}
+		});
+    })();
+</script>
