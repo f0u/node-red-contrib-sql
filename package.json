@@ -12,7 +12,8 @@
   "keywords": [
     "node-red",
     "sql",
-    "storage"
+    "storage",
+    "redconnect"
   ],
   "node-red": {
     "nodes": {
