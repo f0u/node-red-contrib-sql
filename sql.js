@@ -81,6 +81,10 @@
                         database    :  config.db,
                         ssl         :  config.ssl
                     },
+                    pool: {
+                        min: config.minPool,
+                        max: config.maxPool
+                    },
                     debug: true
                 });
             case 'mysql':
@@ -91,6 +95,10 @@
                         password    :  config.password,
                         host        :  config.hostname,
                         database    :  config.db
+                    },
+                    pool: {
+                        min: config.minPool,
+                        max: config.maxPool
                     },
                     debug: true
                 });
@@ -114,6 +122,8 @@
         this.port = n.port;
         this.db = n.db;
         this.ssl = n.ssl;
+        this.minPool = n.minpool || 0;
+        this.maxPool = n.maxpool || 2;
 
     	var credentials = this.credentials;
     	if (credentials) {
@@ -325,7 +335,58 @@
 
     }
 
+    function SqlNodeDelete(n) {
+        var node = this;
+
+        try {
+            RED.nodes.createNode(this,n);
+
+            this.allColumns = n.columns.length === 0;
+            this.sqlConfig = RED.nodes.getNode(n.sqldb);
+            this.where = RED.nodes.getNode(n.where).columns;
+            this.table = n.table;
+            this.limit = n.limit || 0;
+
+            node.on("input",function (msg) {
+                try {
+                    var where = _prepareColumns(msg.payload,node.where);
+                    if ( !node.requireAll ) {
+                        //Build query
+                        var query = node.sqlConfig.connection(node.table),
+                            limit = parseInt(node.limit);
+
+                        if (!limit || isNaN(limit))  {
+                            limit = msg.limit ? parseInt(msg.limit) : 0;
+                        }
+
+                        if (limit && !isNaN(limit)) {
+                            query = query.limit(limit);
+                        }
+
+                        if (Object.keys(where).length > 0) {
+                            query = query.where(where);
+                        }
+
+                        query.del().then(function (rows) {
+                            node.send(InjectPayload(msg,rows));
+                        }).catch(function (e) {
+                            node.error(e);
+                        });
+                    } else {
+                        node.error("One or more columns are missing");
+                    }
+                } catch (e) {
+                    node.error(e.message);
+                }
+            });
+        } catch(e) {
+            console.error(e);
+        }
+
+    }
+
     RED.nodes.registerType("SQL Insert",SqlNodeInsert);
     RED.nodes.registerType("SQL Update",SqlNodeUpdate);
     RED.nodes.registerType("SQL Select",SqlNodeSelect);
+    RED.nodes.registerType("SQL Delete",SqlNodeDelete);
 };

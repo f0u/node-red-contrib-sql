@@ -18,6 +18,7 @@ This add-on, includes a suite of nodes to work with Sql :
 - SQL Insert
 - SQL Update
 - SQL Select
+- SQL Delete
 
 Everyone of these nodes have a param where you specify the params for the connection and the dialect used
 
@@ -54,3 +55,9 @@ Like the ​*PG Update*​ node, this node accept the parameter ​*Where Column
 The ​*columns*​ parameter are the columns that you want to select from the table, in the case a ​*msg.group*​ is passed to the node, the ​*Group by*​ parameter is overwritten, same thing for ​*msg.order*​
 
 For each of the ​*limit*​, ​*offset*​ parameters, in the case the value set is different from 0, the ​*msg.limit*​ / ​*msg.offset*​ is ignored
+
+## SQL Delete
+
+Like the ​*PG Select*​ node, this node accept the parameter ​*Where Columns*.
+
+For the ​*limit* parameter, in the case the value set is different from 0, the ​*msg.limit*​ is ignored
