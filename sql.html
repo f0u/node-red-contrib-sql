@@ -429,7 +429,7 @@
         function calculate_where_clause_name(string_clause) {
             try {
                 var clause = JSON.parse(string_clause);
-                return extractRules(clause);
+                return extractRules(clause) || 'Empty';
             } catch(e) {
                 return 'Where Clause';
             }
