@@ -60,8 +60,8 @@
 
 <script type='text/x-red' data-template-name='sqldb'>
     <div class='form-row'>
-       <label for='node-input-name'><i class='fa fa-tag'></i> Name</label>
-       <input type='text' id='node-input-name' placeholder='Name'>
+       <label for='node-config-input-name'><i class='fa fa-tag'></i> Name</label>
+       <input type='text' id='node-config-input-name' placeholder='Name'>
     </div>
     <div class='form-row'>
         <label for='node-config-input-dialect'><i class='fa fa-bookmark'></i> Dialect</label>
@@ -133,7 +133,6 @@
                     var dialects = 'pg mysql sqlite3'.split(' ');
                     dialects.splice(dialects.indexOf($(this).val()),1);
                     //Hide them
-                    console.log('Hiding ','.'+dialects.join(',.'));
                     $('.'+dialects.join(',.')).hide();
                     //Show the fields for the selected dialect
                     $('.'+$(this).val()).show();
@@ -297,8 +296,8 @@
 
 <script type='text/x-red' data-template-name='sqlwhere'>
     <div class='form-row'>
-       <label for='node-input-name'><i class='fa fa-tag'></i> Name</label>
-       <input type='text' id='node-input-name' placeholder='Name'>
+       <label for='node-config-input-name'><i class='fa fa-tag'></i> Name</label>
+       <input type='text' id='node-config-input-name' placeholder='Name'>
     </div>
     <div class='form-row'>
         <label style='vertical-align: top;'><i class='fa fa-tag'></i> Accepted Columns</label>
@@ -337,7 +336,6 @@
                     //Use the data to set the types
                     if (~['integer','double'].indexOf(data.filter.type)) {
                         types    = ['msg','flow','global','num'];
-                        console.log(data);
                         changeInputType = true;
                         if (type !== 'num') {
                             $(this).attr('type','text')
@@ -374,6 +372,69 @@
             return valid;
         }
 
+        function parseSingleValue(value,type) {
+            switch (type) {
+                case 'msg':
+                case 'flow':
+                case 'global':
+                    return type+'.'+value;
+                case 'str':
+                    return '"'+value+'"';
+                case 'num':
+                    return parseFloat(value,10);
+            }
+        }
+
+        function extractValue(rule) {
+            var operators = {
+                equal           : '=',
+                not_equal       : '!=',
+                in              : 'in',
+                not_in          : 'not in',
+                less            : '<',
+                less_or_equal   : '<=',
+                greater         : '>',
+                greater_or_equal: '>='
+            };
+            var result = rule.value;
+            if (Array.isArray(result)) {
+                if (result.length === rule.data.type.length) {
+                    //For every value use the type
+                    for (var i=0,l=result.length;i<l;i++) {
+                        result[i] = parseSingleValue(result[i],rule.data.type[i]);
+                    }
+                }
+            } else if (rule.data.type.length === 1) {
+                result = parseSingleValue(result,rule.data.type[0]);
+            }
+            if (!~['in','not_in'].indexOf(rule.operator) && Array.isArray(result)) {
+                result = result[0];
+            }
+
+            return [rule.field,operators[rule.operator] || rule.operator ,result].join(' ');
+        }
+
+        function extractRules(clause) {
+            var smallRules = [];
+            for (var i=0,l=clause.rules.length;i<l;i++) {
+                if (clause.rules[i].condition) {
+                    smallRules.push(extractRules(clause.rules[i]));
+                } else {
+                    smallRules.push(extractValue(clause.rules[i]));
+                }
+            }
+            return smallRules.join(' '+clause.condition+' ');
+        }
+
+        function calculate_where_clause_name(string_clause) {
+            try {
+                var clause = JSON.parse(string_clause);
+                return extractRules(clause);
+            } catch(e) {
+                return 'Where Clause';
+            }
+        }
+
 		RED.nodes.registerType('sqlwhere',{
 			category: 'config',
 			color:'rgb(148, 226, 252)',
@@ -383,7 +444,7 @@
 			},
             clause: '{}',
 			label: function() {
-                return this.name||(this.clause==='{}'?'Empty':'Where clause');
+                return this.name||(this.clause==='{}'?'Empty':calculate_where_clause_name(this.clause));
 			},
 			oneditprepare: function() {
                 var node=this,
@@ -445,7 +506,6 @@
                             $('#sqldb-query-builder')
                                 .queryBuilder(queryBuilderParams)
                                 .on('getRuleValue.queryBuilder.filter',function (e, rule) {
-                                    console.log(rule.value);
                                     rule.data = {
                                         'type' : rule.$el.find('.rule-value-container > input[type=hidden]').map(function () {
                                                      return $(this).val();
@@ -454,10 +514,8 @@
                                                       return $('input[name="'+$(this).attr('id').slice(0,-12)+'"]').val();
                                                   }).get()
                                     };
-                                    console.log(rule.data);
                                 })
                                 .on('getRuleInput.queryBuilder.filter', function(e, rule) {
-                                    console.log(rule.filter.input);
                                     if (~['text'].indexOf(rule.filter.input)) {
                                         setTimeout(function () {
                                             transformInputs(rule.$el.find('.rule-value-container > input[name]'));
@@ -476,7 +534,6 @@
                     throw 'Invalid data!';
                 }
                 var result = $('#sqldb-query-builder').queryBuilder('getRules');
-                console.log(result);
                 if (!$.isEmptyObject(result)) {
                     this.clause = JSON.stringify(result, null, 2);
                 } else {
@@ -714,7 +771,6 @@
 
 <script type='text/javascript'>
     (function() {
-        console.log('Registering SQL Select');
 		RED.nodes.registerType('SQL Select',{
 			category: 'storage-output',
 			color:'rgb(148, 226, 252)',
@@ -816,7 +872,6 @@
 
 <script type='text/javascript'>
     (function() {
-        console.log('Registering SQL Delete');
 		RED.nodes.registerType('SQL Delete',{
 			category: 'storage-output',
 			color:'rgb(148, 226, 252)',
