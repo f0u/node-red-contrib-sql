@@ -402,7 +402,8 @@
                             'not_between',
                             'is_null',
                             'is_not_null'
-                        ]
+                        ],
+                        allow_empty : true
                     };
                 if (this.clause !== '{}') {
                     queryBuilderParams.rules = JSON.parse(this.clause);
