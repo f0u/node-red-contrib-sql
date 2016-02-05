@@ -277,7 +277,7 @@
         }
     }
 
-    function parseValue(val,type,node,msg) {
+    function parseValue(val,type,node,msg,operator) {
         if (Array.isArray(val)) {
             if (val.length === type.length) {
                 //For every value use the type
@@ -287,6 +287,9 @@
             }
         } else if (type.length === 1) {
             return parseSingleValue(val,type[0],node,msg);
+        }
+        if (!~['in','not in'].indexOf(operator) && Array.isArray(val)) {
+            val = val[0];
         }
         return val;
     }
@@ -372,13 +375,13 @@
                 default :
                     switch (condition) {
                         case '' :
-                            query.where(obj.field,operators[obj.operator],parseValue(obj.value,obj.data.type,node,msg));
+                            query.where(obj.field,operators[obj.operator],parseValue(obj.value,obj.data.type,node,msg,operators[obj.operator]));
                         break;
                         case 'AND' :
-                            query.andWhere(obj.field,operators[obj.operator],parseValue(obj.value,obj.data.type,node,msg));
+                            query.andWhere(obj.field,operators[obj.operator],parseValue(obj.value,obj.data.type,node,msg,operators[obj.operator]));
                         break;
                         case 'OR' :
-                            query.orWhere(obj.field,operators[obj.operator],parseValue(obj.value,obj.data.type,node,msg));
+                            query.orWhere(obj.field,operators[obj.operator],parseValue(obj.value,obj.data.type,node,msg,operators[obj.operator]));
                         break;
                     }
                 break;
