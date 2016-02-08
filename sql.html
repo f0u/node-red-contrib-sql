@@ -571,8 +571,16 @@
 <script type='text/x-red' data-help-name='SQL Insert'>
     <p>A Sql Insert node. </p>
 
-    <p>The ​<em>msg.payload</em>​ is the data that will be inserted, this data is filtered using the ​<em>Accepted columns</em>​ param, in the case the param is empty - are used all the columns available on ​<em>msg.payload</em>​. <br>
-    Enabling the ​<em>All columns required ?</em>​ parameter, if in the ​<em>msg.payload</em>​ aren’t available all the columns accepted by the node, the query is rejected (This param is ignored in the case the param ​<em>Accepted columns</em>​ is empty).</p>
+    <h3>Server</h3>
+    <p>Here you select a configuration node where is stored the configuration of the server.
+    Multiple nodes connected to the same configuration node share the same connection, is always better to use one shared connection.</p>
+    <h3>Table</h3>
+    <p>The name of the table, after selecting a server the list of the tables is retrieved automatically.</p>
+    <h3>Accepted columns</h3>
+    <p>This is a filter parameter, that the columns that you are making writable by the input. Every column on input if isn&#39;t in this parameter is ignored (except if this parameter is leaved empty).</p>
+
+    <p>The ​<em>msg.payload</em>​ is the data that will be inserted, this data is filtered using the ​<em>Accepted columns</em>​ param, in the case the param is empty - are used all the columns available on ​<em>msg.payload</em>​.</p>
+<p>Enabling the ​<em>All columns required ?</em>​ parameter, if in the ​<em>msg.payload</em>​ aren&#39;t available all the columns accepted by the node, the query is rejected (This param is ignored in the case the param ​<em>Accepted columns</em>​ is empty).</p>
 
 </script>
 
@@ -649,22 +657,24 @@
 <script type='text/x-red' data-help-name='SQL Update'>
     <p>A SQL Update node. </p>
 
-    <p>The ​<em>msg.payload</em>​ is the data that will be updated, this data is filtered using the ​<em>Accepted columns</em>​ param, in the case the param is empty - are used all the columns available on ​<em>msg.payload</em>​. <br>
-    Enabling the ​<em>All columns required ?</em>​ parameter, if in the ​<em>msg.payload</em>​ aren’t available all the columns accepted by the node, the query is rejected (This param is ignored in the case the param ​<em>Accepted columns</em>​ is empty).</p>
-    <p>The values for the where needs to be specified on the ​<em>msg.where</em>​</p>
-
-    <h3 id="example-input">Example Input</h3>
-
-    <pre class="prettyprint"><code class="language-json hljs ">{
-       "<span class="hljs-attribute">payload</span>" : <span class="hljs-value">{
-           "<span class="hljs-attribute">foo</span>" : <span class="hljs-value"><span class="hljs-number">1</span></span>,
-           "<span class="hljs-attribute">bar</span>" : <span class="hljs-value"><span class="hljs-string">"xD"</span></span>,
-           "<span class="hljs-attribute">test</span>": <span class="hljs-value"><span class="hljs-number">2</span>
-       </span>}</span>,
-       "<span class="hljs-attribute">where</span>" : <span class="hljs-value">{
-           "<span class="hljs-attribute">foo</span>" : <span class="hljs-value"><span class="hljs-number">4</span>
-       </span>}
-    </span>}</code></pre>
+    <h3>Server</h3>
+    <p>Here you select a configuration node where is stored the configuration of the server.
+    Multiple nodes connected to the same configuration node share the same connection, is always better to use one shared connection.</p>
+    <h3>Table</h3>
+    <p>The name of the table, after selecting a server the list of the tables is retrieved automatically.</p>
+    <h3>Columns</h3>
+    <p>This is a filter parameter, that the columns that you are making writable by the input. Every column on input if isn&#39;t in this parameter is ignored (except if this parameter is leaved empty).</p>
+    <p>The ​<em>msg.payload</em>​ is the data that will be updated, this data is filtered using the ​<em>Accepted columns</em>​ param, in the case the param is empty - are used all the columns available on ​<em>msg.payload</em>​.</p>
+    <h3>Where</h3>
+    <p>This parameter is available on all nodes expect Insert. Here you can graphically construct your where clause, the columns and their types are automatically retrieved by the server (you need to Select Server and Table before use this parameter).
+    You can bind to every column of your where to a value, this value can be choose from the ones listed above :</p>
+    <ul>
+    <li>Msg : Confront the column with the value contained in the message</li>
+    <li>Flow : This is a type of storage <a href="http://nodered.org/docs/writing-functions.html#flow-context">http://nodered.org/docs/writing-functions.html#flow-context</a></li>
+    <li>Global : Same as flow <a href="http://nodered.org/docs/writing-functions.html#global-context">http://nodered.org/docs/writing-functions.html#global-context</a></li>
+    <li>Number : A float number</li>
+    <li>String</li>
+    </ul>
 
 </script>
 
@@ -760,11 +770,26 @@
 <script type='text/x-red' data-help-name='SQL Select'>
     <p>A SQL Select node. </p>
 
-    <p>The values for the where needs to be specified on the ​<em>msg.payload</em>​, in the case the ​<em>Ignore the where clause ?</em>​ parameter is enabled, the ​<em>msg.payload</em>​ and every time the node is triggered the input isn’t checked.</p>
-
-    <p>The ​<em>columns</em>​ parameter are the columns that you want to select from the table, in the case a ​<em>msg.group</em>​ is passed to the node, the ​<em>Group by</em>​ parameter is overwritten, same thing for ​<em>msg.order</em>​</p>
-
-    <p>For each of the ​<em>limit</em>​, ​<em>offset</em>​ parameters, in the case the value set is different from 0, the ​<em>msg.limit</em>​ / ​<em>msg.offset</em>​ is ignored</p>
+    <h3>Server</h3>
+    <p>Here you select a configuration node where is stored the configuration of the server.
+    Multiple nodes connected to the same configuration node share the same connection, is always better to use one shared connection.</p>
+    <h3>Table</h3>
+    <p>The name of the table, after selecting a server the list of the tables is retrieved automatically.</p>
+    <h3>Columns</h3>
+    <p>This is a filter parameter, this are the columns that you want to retrieve.</p>
+    <h3>Where</h3>
+    <p>This parameter is available on all nodes expect Insert. Here you can graphically construct your where clause, the columns and their types are automatically retrieved by the server (you need to Select Server and Table before use this parameter).
+    You can bind to every column of your where to a value, this value can be choose from the ones listed above :</p>
+    <ul>
+    <li>Msg : Confront the column with the value contained in the message</li>
+    <li>Flow : This is a type of storage <a href="http://nodered.org/docs/writing-functions.html#flow-context">http://nodered.org/docs/writing-functions.html#flow-context</a></li>
+    <li>Global : Same as flow <a href="http://nodered.org/docs/writing-functions.html#global-context">http://nodered.org/docs/writing-functions.html#global-context</a></li>
+    <li>Number : A float number</li>
+    <li>String</li>
+    </ul>
+    <h3>Group and Order</h3>
+    <p>In the case a ​<em>msg.group</em>​ is passed to the node, the ​<em>Group by</em>​ parameter is overwritten, same thing for ​<em>msg.order</em>​.</p>
+<p>For each of the ​<em>limit</em>​, ​<em>offset</em>​ parameters, in the case the value set is different from 0, the ​<em>msg.limit</em>​ / ​<em>msg.offset</em>​ is ignored.</p>
 
 
 </script>
@@ -863,9 +888,25 @@
 <script type='text/x-red' data-help-name='SQL Delete'>
     <p>A SQL Delete node. </p>
 
-    <p>The values for the where needs to be specified on the ​<em>msg.payload</em>​.</p>
-
-    <p>For the ​<em>limit</em>​ parameter, in the case the value set is different from 0, the ​<em>msg.limit</em>​ is ignored</p>
+    <h3>Server</h3>
+    <p>Here you select a configuration node where is stored the configuration of the server.
+    Multiple nodes connected to the same configuration node share the same connection, is always better to use one shared connection.</p>
+    <h3>Table</h3>
+    <p>The name of the table, after selecting a server the list of the tables is retrieved automatically.</p>
+    <h3>Columns</h3>
+    <p>This is a filter parameter, this are the columns that you want to retrieve.</p>
+    <h3>Where</h3>
+    <p>This parameter is available on all nodes expect Insert. Here you can graphically construct your where clause, the columns and their types are automatically retrieved by the server (you need to Select Server and Table before use this parameter).
+    You can bind to every column of your where to a value, this value can be choose from the ones listed above :</p>
+    <ul>
+    <li>Msg : Confront the column with the value contained in the message</li>
+    <li>Flow : This is a type of storage <a href="http://nodered.org/docs/writing-functions.html#flow-context">http://nodered.org/docs/writing-functions.html#flow-context</a></li>
+    <li>Global : Same as flow <a href="http://nodered.org/docs/writing-functions.html#global-context">http://nodered.org/docs/writing-functions.html#global-context</a></li>
+    <li>Number : A float number</li>
+    <li>String</li>
+    </ul>
+    <h3>Limit</h3>
+    <p>In the case the value set is different from 0, the ​<em>msg.limit</em>​ is ignored</p>
 
 
 </script>

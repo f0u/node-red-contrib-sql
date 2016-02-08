@@ -22,6 +22,8 @@
     var knex=require('knex');
     var querystring=require('querystring');
 
+    // TODO: Complete type map for sqlite3
+    // Convert the name from the sql form to a easier
     var typesMaps = {
             pg : [
                 [ 'boolean'               , 'boolean'   ],
@@ -42,7 +44,39 @@
                 [ 'numeric'               , 'double'    ],
                 [ 'real'                  , 'double'    ],
                 [ 'USER-DEFINED'          , 'enum'      ]
+            ],
+            mysql : [
+                [ 'boolean'               , 'boolean'   ],
+                [ 'bool'                  , 'boolean'   ],
+                [ 'char'                  , 'string'    ],
+                [ 'varchar'               , 'string'    ],
+                [ 'tinytext'              , 'string'    ],
+                [ 'mediumtext'            , 'string'    ],
+                [ 'longtext'              , 'string'    ],
+                [ 'text'                  , 'string'    ],
+                [ 'date'                  , 'date'      ],
+                [ 'time'                  , 'time'      ],
+                [ 'datetime'              , 'datetime'  ],
+                [ 'timestamp'             , 'datetime'  ],
+                [ 'bit'                   , 'integer'   ],
+                [ 'tinyint'               , 'integer'   ],
+                [ 'smallint'              , 'integer'   ],
+                [ 'mediumint'             , 'integer'   ],
+                [ 'int'                   , 'integer'   ],
+                [ 'integer'               , 'integer'   ],
+                [ 'bigint'                , 'integer'   ],
+                [ 'decimal'               , 'double'    ],
+                [ 'dec'                   , 'double'    ],
+                [ 'numeric'               , 'double'    ],
+                [ 'fixed'                 , 'double'    ],
+                [ 'float'                 , 'double'    ],
+                [ 'double'                , 'double'    ],
+                [ 'double precision'      , 'double'    ],
+                [ 'real'                  , 'double'    ],
+                [ 'enum'                  , 'enum'      ],
+                [ 'set'                   , 'set'       ]
             ]
+
         };
 
     RED.httpAdmin.get('/sqldb/:id',function(req,res) {
@@ -92,7 +126,6 @@
     }
 
     function _getConnection(config) {
-        console.log('Creating a',config.dialect,'connection');
         switch (config.dialect) {
             case 'pg':
                 var auth = {
@@ -142,6 +175,7 @@
 
     }
 
+    // TODO: Get enum values for  sqlite3
     function getEnumValues(connection,schema,typename,dialect) {
         switch (dialect) {
             case 'pg':
@@ -150,7 +184,8 @@
         return ;
     }
 
-    function getColumns(connection,table,dialect) {
+    // TODO: Get table columns for sqlite3
+    function getColumns(connection,table,dialect,database) {
         return new Promise(function(resolve, reject) {
             switch (dialect) {
                 case 'pg':
@@ -190,10 +225,39 @@
                             resolve(results);
                         }
                     },reject);
-
+                case 'mysql':
+                    return connection.raw('SELECT column_name as name,data_type as type,character_maximum_length, column_type, data_type FROM information_schema.columns WHERE TABLE_SCHEMA = ? AND table_name = ?',[database,table]).then(function (result) {
+                        var results = result.rows;
+                        for (var i = 0; i < results.length; i++) {
+                            var possibleType = typesMaps[dialect].filter(function (type) {
+                                                    return ~results[i].type.indexOf(type[0]);
+                                                });
+                            possibleType = possibleType.reduce(function (returned,value) {
+                                                return value[0].length>returned[0].length
+                                                        ? value
+                                                        : returned;
+                                            },['','']);
+                            if (possibleType) {
+                                results[i].typeName = possibleType[1];
+                                if (( results[i].typeName === 'enum' ) || (results[i].typeName === 'set')) {
+                                    var regRes = results[i].column_type.match(/^.*\((.*)\)$/);
+                                    if (regRes && ( regRes.length > 1 ) ) {
+                                        //Possible security break :
+                                        results[i].values = eval('['+regRes[1]+']');
+                                    }
+                                }
+                            }
+                            delete results[i].column_type;
+                        }
+                        resolve(results);
+                    },reject);
             }
         });
     }
+
+    RED.httpAdmin.post('/sqldb/test/connection',function (req,res) {
+
+    });
 
     function SqlDatabaseNode(n) {
         var node = this;
@@ -220,11 +284,30 @@
 
 
         RED.httpAdmin.get('/sqldb/'+n.id+'/tables',function(req,res) {
+            // TODO: Test list of the tables for mysql and sqlite3
             switch (n.dialect) {
                 case 'pg':
                     return node.connection.raw('SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE "table_schema" = current_schema').then(function (results) {
                         res.json(results.rows.map(function (rw) {
                             return [rw.table_name];
+                        }));
+                    },function (err) {
+                        console.error(err);
+                        res.status(500).json(err);
+                    });
+                case 'mysql':
+                    return node.connection.raw('SELECT table_name FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ?',[n.db]).then(function (results) {
+                        res.json(results.rows.map(function (rw) {
+                            return [rw.table_name];
+                        }));
+                    },function (err) {
+                        console.error(err);
+                        res.status(500).json(err);
+                    });
+                case 'sqlite3':
+                    return node.connection.raw('SELECT name FROM sqlite_temp_master WHERE type="table"').then(function (results) {
+                        res.json(results.rows.map(function (rw) {
+                            return [rw.name];
                         }));
                     },function (err) {
                         console.error(err);
@@ -236,7 +319,7 @@
         });
 
         RED.httpAdmin.get('/sqldb/'+n.id+'/:table/columns',function(req,res) {
-            getColumns(node.connection,req.params.table,n.dialect).then(function (columns) {
+            getColumns(node.connection,req.params.table,n.dialect,n.db).then(function (columns) {
                 res.json(columns);
             },function (err) {
                 console.error(err);
@@ -409,7 +492,6 @@
 
         try {
             this.clause = JSON.parse(n.clause);
-            console.log(n.clause);
             this.getQuery = function (baseQuery,node,msg) {
                 if (n.clause === '{}') {
                     return baseQuery;
@@ -433,8 +515,6 @@
     RED.nodes.registerType('sqlarray',SqlArrayNode);
 
     RED.nodes.registerType('sqlwhere',SqlWhereNode);
-
-
 
     function _prepareColumns(payload,columns) {
         var allColumns = columns.length === 0;
@@ -490,7 +570,6 @@
         });
     }
 
-
     function SqlNodeUpdate(n) {
         var node = this;
 
@@ -515,7 +594,6 @@
                     } catch (e) {
                         node.error('One or more columns are missing in the where');
                     }
-                    console.log(query.toString());
                     query.then(function (rows) {
                         node.send(InjectPayload(msg,rows));
                     }).catch(function (e) {
@@ -589,8 +667,6 @@
                         query = query.orderBy(order,node.orderdir);
                     }
 
-                    console.log(query.toString());
-
                     query.then(function (rows) {
 
                         node.send(InjectPayload(msg,rows));
@@ -640,7 +716,6 @@
                         query = query.limit(limit);
                     }
 
-                    console.log(query.toString());
                     query.del().then(function (rows) {
                         node.send(InjectPayload(msg,rows));
                     }).catch(function (e) {
